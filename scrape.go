@@ -6,6 +6,7 @@ import (
     "database/sql"
     "github.com/coopernurse/gorp"
     _ "github.com/mattn/go-sqlite3"
+    "strconv"
     //"strings"
 )
 
@@ -31,22 +32,24 @@ func main() {
 
     tx, _ := dbmap.Begin()
 
-    doc, _ := goquery.NewDocument("http://stocks.finance.yahoo.co.jp/stocks/qi/?js=%E3%81%82")
-    doc.Find("table.yjS tr.yjM").Each(func(_ int, s *goquery.Selection) {
-        companyName := s.Find(".yjMt").Text()
-        price := s.Find(".price font").Text()
-        if price == "" {
-            price = s.Find(".price").Text()
-        }
-        tx.Insert(&Stock{0, companyName, price})
-        //fmt.Println(price)
-    })
+    baseUrl := "http://stocks.finance.yahoo.co.jp/stocks/qi/?&p="
+    for i := 1; i <= 179; i++ {
+      pageString := strconv.Itoa(i)
+      pageUrl := baseUrl + pageString
+      fmt.Println(pageUrl)
+      doc, _ := goquery.NewDocument(pageUrl)
+      doc.Find("table.yjS tr.yjM").Each(func(_ int, s *goquery.Selection) {
+          companyName := s.Find(".yjMt").Text()
+          price := s.Find(".price font").Text()
+          if price == "" {
+              price = s.Find(".price").Text()
+          }
+          tx.Insert(&Stock{0, companyName, price})
+      })
+    }
 
     tx.Commit()
 
     list, _ := dbmap.Select(Stock{}, "select * from stock")
-    for _, l := range list {
-        p := l.(*Stock)
-        fmt.Printf("%d, %s, %s\n", p.Id, p.CompanyName, p.Price)
-    }
+    fmt.Println(len(list))
 }
